@@ -35,13 +35,45 @@ int _hash(int x){
 	return 0;
 }
 
+void resize(HashTableInt* table){
+	int newSize = table->size * 2;
+	HashTableIntNode* newArr = calloc(sizeof(HashTableIntNode) * newSize);
+	
+	// copy all nodes to the new array, with new hash
+	// loop through prev table arr, hash key, put in new place
+
+	// free all nodes in previous arr
+
+	// set table->array = newArr;
+}
+
+float get_load_factor(HashTableInt* table){
+	// # alive nodes / size
+	int aliveNodes = 0;
+	int size = table->size;
+	for(int i=0; i<size; i++){
+		if(table->array[i].alive == 1){
+			aliveNodes++;	
+		}
+	}
+	float loadFactor = ((float)aliveNodes/size);
+	return loadFactor;
+}
+
 int put(HashTableInt* table, int key, int value){
+	// If load factor is too big, then let's resize the array.
+	float loadFactor = get_load_factor(table);
+	if(loadFactor > .7){
+		printf("time to expand array\n");
+		resize(table);
+	} 
+
 	// hash the value, get index
 	int index = _hash(key) % table->size;
 	
 	if(index > table->size){
 		// something went terribly wrong
-		printf("hey dude something wrong with hashing the value\n");
+		printf("!hey dude something wrong with hashing the value!\n");
 		return -1;
 	}
 
@@ -49,7 +81,6 @@ int put(HashTableInt* table, int key, int value){
 	HashTableIntNode* node; //= &table->array[index];
 
 
-	printf("index is %i\n", index);
 	for(int i=index; i<table->size; i++){
 		node = &table->array[i];
 
@@ -68,19 +99,6 @@ int put(HashTableInt* table, int key, int value){
 		
 	}
 
-	/*
-	while(node < table->array + (sizeof(HashTableIntNode)*table->size)){
-		if(!node->alive || node->key == key){
-			// TODO: change this to a for loop so we can easily
-			// print/observe the current index.
-			printf("%i || %i, setting at node\n", !node->alive, node->key == key);
-			table->array[index] = newNode;
-			node = NULL;
-			return 0;
-		}
-		node++;
-	}
-	*/
 	return 1;
 }
 
@@ -117,6 +135,7 @@ void print_dict_array(HashTableInt* table){
 int main(){
 	// Testing collisions (hash function should be changed to always return 0)
 	HashTableInt table = create_HashTableInt(100);
+	/*
 	printf("put return: %i\n", put(&table, 4, 248724)); // index 0
 	print_dict_array(&table);
 	assert(get(&table, 4) != NULL);
@@ -128,13 +147,26 @@ int main(){
 	assert(*get(&table, 2) == 98654); // will linear search until found
 	put(&table, 2, 7); // index 1, replace the old value
 	assert(*get(&table, 2) == 7); // will linear search until found
-	
+	*/
+
+	for(int i=0; i<table.size-15; i++){
+		put(&table, i, i*5);
+	}
+	print_dict_array(&table);	
+	printf("get_load_factor: %f\n", get_load_factor(&table));
 	/*
 	Remaining scenarios:
 	- when the array is too full (use load factor calc I believe)
 	- when there's collisions
-		- change the hash function to just return 0 everytime and
-		do it alot
+		- this works as far as I can tell, just test alot
+		and see how its handled in edge cases 
+	*/
+
+	/*
+		Okay; when putting check load factor.
+		# elements / nodes in table (size)
+		When above, idk, .7 then we should double the size of the array.
+		(or prime number, whatever)
 	*/
 }
 
