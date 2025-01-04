@@ -1,24 +1,14 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <assert.h>
+#include "HashTableInt.h"
 
-typedef struct {
-	int key;
-	int value;
-	// to easily tell if this block in memory exists
-	// 1 if alive and instantiated, 0 if not
-	int alive;
-} HashTableIntNode;
-
-typedef struct {
-	HashTableIntNode* array;
-	int size;
-} HashTableInt;
-
-int put(HashTableInt* table, int key, int value);
 int _put_no_resize(HashTableInt* table, int key, int value);
+void _resize(HashTableInt* table);
+int _hash(int x);
+float _get_load_factor(HashTableInt* table);
 
-HashTableInt create_HashTableInt(int size){
+// Header functions are first, then all the "helper" functions are below.
+
+HashTableInt create_HashTableInt(){
+	int size = 100;
 	HashTableInt table = {
 		calloc(size, sizeof(HashTableIntNode) * size),
 		size
@@ -26,15 +16,53 @@ HashTableInt create_HashTableInt(int size){
 	return table;
 }
 
-// https://stackoverflow.com/questions/664014/what-integer-hash-function-are-good-that-accepts-an-integer-hash-key
-int _hash(int x){
-	x = ((x >> 16) ^ x) * 0x45d9f3b;
-	x = ((x >> 16) ^ x) * 0x45d9f3b;
- 	x = (x >> 16) ^ x;
-	return x;	
+
+// Put and _put_no_resize were organized like this so that I could
+// avoid recursively calling put over and over.
+int put(HashTableInt* table, int key, int value){
+	int result = _put_no_resize(table, key, value);
+	
+	// If load factor is too big, then let's resize the array.
+	float loadFactor = _get_load_factor(table);
+	if(loadFactor > .7){
+		_resize(table);
+	}
+	return result;
 }
 
-void resize(HashTableInt* table){
+// Return pointer, to differentiate if its found or not.
+// use this to check if your map contains a value.
+// NULL if not in map, int* to int value given key.
+int* get(HashTableInt* table, int key){
+	// hash the value
+	int index = _hash(key) % table->size;
+
+	// get the struct from the array
+	HashTableIntNode* node = &table->array[index];
+
+	// linear search to find value	
+	for(int i=index; i<table->size; i++){
+		node = &table->array[i];
+		if(node->alive && node->key == key){
+			return &node->value;
+		}
+	}
+	
+	// Not found in array from index its supposed to be at to end of array.
+	// Search from beginning of array.
+	for(int i=0; i<index; i++){
+		node = &table->array[i];
+		if(node->alive && node->key == key){
+			return &node->value;
+		}
+	}
+
+	// Not sure when this will ever happen
+	return NULL;
+}
+
+
+void _resize(HashTableInt* table){
 	int newSize = table->size * 2;
 	HashTableIntNode* newArr = calloc(
 		newSize, 
@@ -59,7 +87,7 @@ void resize(HashTableInt* table){
 	table->size = newSize;
 }
 
-float get_load_factor(HashTableInt* table){
+float _get_load_factor(HashTableInt* table){
 	// # alive nodes / size
 	int aliveNodes = 0;
 	int size = table->size;
@@ -72,16 +100,6 @@ float get_load_factor(HashTableInt* table){
 	return loadFactor;
 }
 
-int put(HashTableInt* table, int key, int value){
-	int result = _put_no_resize(table, key, value);
-	
-	// If load factor is too big, then let's resize the array.
-	float loadFactor = get_load_factor(table);
-	if(loadFactor > .7){
-		resize(table);
-	}
-	return result;
-}
 
 int _put_no_resize(HashTableInt* table, int key, int value){
 
@@ -140,87 +158,13 @@ int _put_no_resize(HashTableInt* table, int key, int value){
 	return 1;
 }
 
-// Return pointer, to differentiate if its found or not.
-// use this to check if your map contains a value.
-// NULL if not in map, int* to int value given key.
-int* get(HashTableInt* table, int key){
-	// hash the value
-	int index = _hash(key) % table->size;
-
-	// get the struct from the array
-	HashTableIntNode* node = &table->array[index];
-
-	// linear search to find value	
-	for(int i=index; i<table->size; i++){
-		node = &table->array[i];
-		if(node->alive && node->key == key){
-			return &node->value;
-		}
-	}
-	
-	// Not found in array from index its supposed to be at to end of array.
-	// Search from beginning of array.
-	for(int i=0; i<index; i++){
-		node = &table->array[i];
-		if(node->alive && node->key == key){
-			return &node->value;
-		}
-	}
-
-	// Not sure when this will ever happen
-	return NULL;
+// https://stackoverflow.com/questions/664014/what-integer-hash-function-are-good-that-accepts-an-integer-hash-key
+int _hash(int x){
+	x = ((x >> 16) ^ x) * 0x45d9f3b;
+	x = ((x >> 16) ^ x) * 0x45d9f3b;
+ 	x = (x >> 16) ^ x;
+	return x;	
 }
 
-void print_dict_array(HashTableInt* table){
-	for(int i=0; i<table->size; i++){
-		HashTableIntNode node = table->array[i];
-		printf("index %i: (%i, %i, %i)\n", i, node.key, node.value, node.alive);
-	}
-}
-
-int main(){
-	// Testing collisions (hash function should be changed to always return 0)
-	HashTableInt table = create_HashTableInt(100);
-
-	/*
-	for(int i=0; i<25; i++){
-		put(&table, i, i*5);
-	}
-	print_dict_array(&table);
-	assert(*get(&table, 2) == 10);
-	assert(*get(&table, 11) == 55);
-	*/
-
-	for(int i=0; i<295; i++){
-		put(&table, i, i*5);
-	}
-	/*
-	print_dict_array(&table);
-	for(int i=96; i<195; i++){
-		put(&table, i, i*5);
-	}
-	*/
-
-	print_dict_array(&table);
-	assert(*get(&table, 2) == 10);
-	assert(*get(&table, 11) == 55);
-	assert(*get(&table, 292) == 1460);
-	assert(*get(&table, 50) == 250);
-	
-	/*
-	Remaining scenarios:
-	- when the array is too full (use load factor calc I believe)
-	- when there's collisions
-		- this works as far as I can tell, just test alot
-		and see how its handled in edge cases 
-	*/
-
-	/*
-		Okay; when putting check load factor.
-		# elements / nodes in table (size)
-		When above, idk, .7 then we should double the size of the array.
-		(or prime number, whatever)
-	*/
-}
 
 
