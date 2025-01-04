@@ -15,6 +15,8 @@ typedef struct {
 	int size;
 } HashTableInt;
 
+int put(HashTableInt* table, int key, int value);
+int _put_no_resize(HashTableInt* table, int key, int value);
 
 HashTableInt create_HashTableInt(int size){
 	HashTableInt table = {
@@ -26,25 +28,36 @@ HashTableInt create_HashTableInt(int size){
 
 // https://stackoverflow.com/questions/664014/what-integer-hash-function-are-good-that-accepts-an-integer-hash-key
 int _hash(int x){
-	/*
 	x = ((x >> 16) ^ x) * 0x45d9f3b;
 	x = ((x >> 16) ^ x) * 0x45d9f3b;
  	x = (x >> 16) ^ x;
 	return x;	
-	*/
 	return 0;
 }
 
 void resize(HashTableInt* table){
 	int newSize = table->size * 2;
-	HashTableIntNode* newArr = calloc(sizeof(HashTableIntNode) * newSize);
-	
+	HashTableIntNode* newArr = calloc(
+		newSize, 
+		sizeof(HashTableIntNode) * newSize
+	);
+	HashTableInt newTable = {newArr, newSize};
+
 	// copy all nodes to the new array, with new hash
 	// loop through prev table arr, hash key, put in new place
+	for(int i=0; i<table->size; i++){
+		HashTableIntNode node = table->array[i];
+		if(node.alive == 0){
+			continue;
+		}
 
-	// free all nodes in previous arr
-
-	// set table->array = newArr;
+		int newIndex = _hash(node.key) % newSize; 
+		_put_no_resize(&newTable, node.key, node.value);
+	}
+	
+	free(table->array);
+	table->array = newArr;
+	table->size = newSize;
 }
 
 float get_load_factor(HashTableInt* table){
@@ -61,12 +74,22 @@ float get_load_factor(HashTableInt* table){
 }
 
 int put(HashTableInt* table, int key, int value){
+	int result = _put_no_resize(table, key, value);
+	printf("Inserted K:%i, V:%i\n", key, value);
+	
 	// If load factor is too big, then let's resize the array.
 	float loadFactor = get_load_factor(table);
 	if(loadFactor > .7){
+		printf("table with size %i needs to be resized", table->size);
+		printf("load factor is %f\n", loadFactor);
 		printf("time to expand array\n");
 		resize(table);
-	} 
+		printf("exiting put after resize\n");
+	}
+	return result;
+}
+
+int _put_no_resize(HashTableInt* table, int key, int value){
 
 	// hash the value, get index
 	int index = _hash(key) % table->size;
@@ -84,10 +107,10 @@ int put(HashTableInt* table, int key, int value){
 	for(int i=index; i<table->size; i++){
 		node = &table->array[i];
 
-		if(node->key == key){
+		if(node->alive && node->key == key){
 			// Update the key with its new value
 			table->array[i] = newNode;
-			node = NULL;
+			//node = NULL;
 			return 0;
 		}
 
@@ -111,7 +134,8 @@ int* get(HashTableInt* table, int key){
 
 	// get the struct from the array
 	HashTableIntNode* node = &table->array[index];
-	// linear search if necessary to find value	
+
+	// linear search to find value	
 	while(node < table->array + (sizeof(HashTableIntNode)*table->size)){
 		if(node->alive && node->key == key){
 			return &node->value;
@@ -123,37 +147,25 @@ int* get(HashTableInt* table, int key){
 }
 
 void print_dict_array(HashTableInt* table){
-	// NOTE: only printing alive nodes
 	for(int i=0; i<table->size; i++){
 		HashTableIntNode node = table->array[i];
-		//if(node.alive){
-			printf("index %i: (%i, %i, %i)\n", i, node.key, node.value, node.alive);
-		//}
+		printf("index %i: (%i, %i, %i)\n", i, node.key, node.value, node.alive);
 	}
 }
 
 int main(){
 	// Testing collisions (hash function should be changed to always return 0)
 	HashTableInt table = create_HashTableInt(100);
-	/*
-	printf("put return: %i\n", put(&table, 4, 248724)); // index 0
-	print_dict_array(&table);
-	assert(get(&table, 4) != NULL);
-	assert(*get(&table, 4) == 248724);
 
-	put(&table, 2, 98654); // index 1
-	print_dict_array(&table);
-	assert(get(&table, 2) != NULL);
-	assert(*get(&table, 2) == 98654); // will linear search until found
-	put(&table, 2, 7); // index 1, replace the old value
-	assert(*get(&table, 2) == 7); // will linear search until found
-	*/
-
-	for(int i=0; i<table.size-15; i++){
+	for(int i=0; i<95; i++){
 		put(&table, i, i*5);
 	}
-	print_dict_array(&table);	
-	printf("get_load_factor: %f\n", get_load_factor(&table));
+	//print_dict_array(&table);
+	for(int i=96; i<195; i++){
+		put(&table, i, i*5);
+	}
+	print_dict_array(&table);
+	
 	/*
 	Remaining scenarios:
 	- when the array is too full (use load factor calc I believe)
