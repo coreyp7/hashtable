@@ -32,7 +32,7 @@ int _hash(int x){
 	x = ((x >> 16) ^ x) * 0x45d9f3b;
  	x = (x >> 16) ^ x;
 	return x;	
-	return 0;
+	return 95;
 }
 
 void resize(HashTableInt* table){
@@ -119,9 +119,32 @@ int _put_no_resize(HashTableInt* table, int key, int value){
 			table->array[i] = newNode;
 			return 0;
 		}	
-		
 	}
 
+	// Failed to put in array from index to end, all nodes are full.
+	// Start searching from beginning of array for a place for this node.
+	for(int i=0; i<index; i++){
+		// TODO: put into function, this is duplicate code
+		node = &table->array[i];
+
+		if(node->alive && node->key == key){
+			// Update the key with its new value
+			table->array[i] = newNode;
+			//node = NULL;
+			return 0;
+		}
+
+		if(!node->alive){
+			// This is an empty node, we can put K/V here.
+			table->array[i] = newNode;
+			return 0;
+		}	
+
+	}
+
+	// This should never be reached, since we dynamically expand the array
+	// when the load factor is too high (> .7).
+	// Check if this ever returns 1 when testing.
 	return 1;
 }
 
@@ -136,13 +159,24 @@ int* get(HashTableInt* table, int key){
 	HashTableIntNode* node = &table->array[index];
 
 	// linear search to find value	
+	// TODO: change this to for loop because this is UGLY
 	while(node < table->array + (sizeof(HashTableIntNode)*table->size)){
 		if(node->alive && node->key == key){
 			return &node->value;
 		}
 		node++;
 	}
+	
+	// Not found in array from index its supposed to be at to end of array.
+	// Search from beginning of array.
+	for(int i=0; i<index; i++){
+		node = &table->array[i];
+		if(node->alive && node->key == key){
+			return &node->value;
+		}
+	}
 
+	// Not sure when this will ever happen
 	return NULL;
 }
 
@@ -157,10 +191,17 @@ int main(){
 	// Testing collisions (hash function should be changed to always return 0)
 	HashTableInt table = create_HashTableInt(100);
 
+	for(int i=0; i<25; i++){
+		put(&table, i, i*5);
+	}
+	print_dict_array(&table);
+	assert(*get(&table, 2) == 10);
+	assert(*get(&table, 11) == 55);
+
 	for(int i=0; i<95; i++){
 		put(&table, i, i*5);
 	}
-	//print_dict_array(&table);
+	print_dict_array(&table);
 	for(int i=96; i<195; i++){
 		put(&table, i, i*5);
 	}
