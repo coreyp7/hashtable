@@ -4,7 +4,7 @@
 #include <assert.h>
 #include "HashTableInt.h"
 
-void _print_dict_array(HashTableInt* table){
+void print_table_arr(HashTableInt* table){
 	for(int i=0; i<table->size; i++){
 		HashTableIntNode node = table->array[i];
 		printf("index %i: (%i, %i, %i)\n", i, node.key, node.value, node.alive);
@@ -25,7 +25,7 @@ int main(){
 		printf("put(%i, %i)\n", i, i*5);
 	}
 
-	_print_dict_array(&table);
+	print_table_arr(&table);
 
 	for(int i=0; i<295; i++){
 		int key = keys[i];
