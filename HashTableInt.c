@@ -32,7 +32,6 @@ int _hash(int x){
 	x = ((x >> 16) ^ x) * 0x45d9f3b;
  	x = (x >> 16) ^ x;
 	return x;	
-	return 95;
 }
 
 void resize(HashTableInt* table){
@@ -75,16 +74,11 @@ float get_load_factor(HashTableInt* table){
 
 int put(HashTableInt* table, int key, int value){
 	int result = _put_no_resize(table, key, value);
-	printf("Inserted K:%i, V:%i\n", key, value);
 	
 	// If load factor is too big, then let's resize the array.
 	float loadFactor = get_load_factor(table);
 	if(loadFactor > .7){
-		printf("table with size %i needs to be resized", table->size);
-		printf("load factor is %f\n", loadFactor);
-		printf("time to expand array\n");
 		resize(table);
-		printf("exiting put after resize\n");
 	}
 	return result;
 }
@@ -101,7 +95,7 @@ int _put_no_resize(HashTableInt* table, int key, int value){
 	}
 
 	HashTableIntNode newNode = {key, value, 1};
-	HashTableIntNode* node; //= &table->array[index];
+	HashTableIntNode* node;
 
 
 	for(int i=index; i<table->size; i++){
@@ -110,7 +104,6 @@ int _put_no_resize(HashTableInt* table, int key, int value){
 		if(node->alive && node->key == key){
 			// Update the key with its new value
 			table->array[i] = newNode;
-			//node = NULL;
 			return 0;
 		}
 
@@ -130,7 +123,6 @@ int _put_no_resize(HashTableInt* table, int key, int value){
 		if(node->alive && node->key == key){
 			// Update the key with its new value
 			table->array[i] = newNode;
-			//node = NULL;
 			return 0;
 		}
 
@@ -148,7 +140,7 @@ int _put_no_resize(HashTableInt* table, int key, int value){
 	return 1;
 }
 
-// return pointer, to differentiate if its found or not.
+// Return pointer, to differentiate if its found or not.
 // use this to check if your map contains a value.
 // NULL if not in map, int* to int value given key.
 int* get(HashTableInt* table, int key){
@@ -159,12 +151,11 @@ int* get(HashTableInt* table, int key){
 	HashTableIntNode* node = &table->array[index];
 
 	// linear search to find value	
-	// TODO: change this to for loop because this is UGLY
-	while(node < table->array + (sizeof(HashTableIntNode)*table->size)){
+	for(int i=index; i<table->size; i++){
+		node = &table->array[i];
 		if(node->alive && node->key == key){
 			return &node->value;
 		}
-		node++;
 	}
 	
 	// Not found in array from index its supposed to be at to end of array.
@@ -191,21 +182,30 @@ int main(){
 	// Testing collisions (hash function should be changed to always return 0)
 	HashTableInt table = create_HashTableInt(100);
 
+	/*
 	for(int i=0; i<25; i++){
 		put(&table, i, i*5);
 	}
 	print_dict_array(&table);
 	assert(*get(&table, 2) == 10);
 	assert(*get(&table, 11) == 55);
+	*/
 
-	for(int i=0; i<95; i++){
+	for(int i=0; i<295; i++){
 		put(&table, i, i*5);
 	}
+	/*
 	print_dict_array(&table);
 	for(int i=96; i<195; i++){
 		put(&table, i, i*5);
 	}
+	*/
+
 	print_dict_array(&table);
+	assert(*get(&table, 2) == 10);
+	assert(*get(&table, 11) == 55);
+	assert(*get(&table, 292) == 1460);
+	assert(*get(&table, 50) == 250);
 	
 	/*
 	Remaining scenarios:
